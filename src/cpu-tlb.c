@@ -16,14 +16,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int tlb_change_all_page_tables_of(struct pcb_t *proc,  struct memphy_struct * mp)
-{
-  /* TODO update all page table directory info 
-   *      in flush or wipe TLB (if needed)
-   */
+// int tlb_change_all_page_tables_of(struct pcb_t *proc,  struct memphy_struct * mp)
+// {
+//   /* TODO update all page table directory info 
+//    *      in flush or wipe TLB (if needed)
+//    */
 
-  return 0;
-}
+//   return 0;
+// }
 
 int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct * mp)
 {
