@@ -16,12 +16,14 @@
  * and runs at high speed
  */
 
-
 #include "mm.h"
 #include <stdlib.h>
 
 #define init_tlbcache(mp,sz,...) init_memphy(mp, sz, (1, ##__VA_ARGS__))
-
+/*define MAX_PAGE_NUM for mapping
+ *each process gets MAX_PAGE_NUM * BYTE data
+ */ 
+#define MAX_PAGE_NUM 4096
 /*
  *  tlb_cache_read read TLB cache device
  *  @mp: memphy struct
@@ -35,7 +37,8 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
-   return 0;
+   int addr = (pid*MAX_PAGE_NUM+pgnum)%(mp->max_size);
+   return TLBMEMPHY_read(mp,addr,value);
 }
 
 /*
@@ -51,7 +54,8 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
-   return 0;
+   int addr = (pid*MAX_PAGE_NUM+pgnum)%(mp->max_size);
+   return TLBMEMPHY_write(mp,addr,value);
 }
 
 /*
@@ -100,8 +104,12 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
    /*TODO dump memphy contnt mp->storage 
     *     for tracing the memory content
     */
-
-   return 0;
+   int dump = 0;
+   for(int i = 0;i<mp->maxsz;i++){
+      dump*=2;
+      dump+=mp->storage[i];
+   }
+   return dump;
 }
 
 
