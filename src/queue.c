@@ -11,6 +11,7 @@ void enqueue(struct queue_t * q, struct pcb_t * proc) {
         /* TODO: put a new process to queue [q] */
         q->size++;
         q->proc[q->size -1] = proc;
+        return;
 }
 
 struct pcb_t * dequeue(struct queue_t * q) {
