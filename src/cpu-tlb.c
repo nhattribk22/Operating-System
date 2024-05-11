@@ -48,9 +48,13 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
   /* by using tlb_cache_read()/tlb_cache_write()*/
   //pgnum not defined, find pgnum
   int pgn = PAGING_PGN(addr);
-  uint32_t pg_entry = proc->mm->pgd[pgn];
-  //Write pgn to cache
-  tlb_cache_write(proc->tlb,proc->pid,pgn,(BYTE)addr);
+  int off = PAGING_OFFST(addr);
+  int fpn;
+  if(pg_getpage(proc->mm,pgn,&fpn,proc)!=0){
+    return -1; //Invalid page access
+  }
+  int frame = (fpn >> PAGING_ADDR_FPN_LOBIT) + off;
+  tlb_cache_write(proc->tlb,proc->pid,pgn,frame);
   return val;
 }
 
@@ -87,7 +91,7 @@ int tlbread(struct pcb_t * proc, uint32_t source,
   /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
   /* frmnum is return value of tlb_cache_read/write value*/
-	frmnum = tlb_cache_read(proc->tlb,source,offset,data);
+	frmnum = tlb_cache_read(proc->tlb,proc->pid,offset,data);
 #ifdef IODUMP
   if (frmnum >= 0)
     printf("TLB hit at read region=%d offset=%d\n", 
