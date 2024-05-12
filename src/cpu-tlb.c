@@ -46,7 +46,15 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 
   /* TODO update TLB CACHED frame num of the new allocated page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
-
+  //pgnum not defined, find pgnum
+  int pgn = PAGING_PGN(addr);
+  int off = PAGING_OFFST(addr);
+  int fpn;
+  if(pg_getpage(proc->mm,pgn,&fpn,proc)!=0){
+    return -1; //Invalid page access
+  }
+  int frame = (fpn >> PAGING_ADDR_FPN_LOBIT) + off;
+  tlb_cache_write(proc->tlb,proc->pid,pgn,frame);
   return val;
 }
 
@@ -61,7 +69,15 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
 
   /* TODO update TLB CACHED frame num of freed page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
-
+  int addr=proc->mm->symrgtbl[reg_index].rg_start;
+  int pgn = PAGING_PGN(addr);
+  int off = PAGING_OFFST(addr);
+  int fpn;
+  if(pg_getpage(proc->mm,pgn,&fpn,proc)!=0){
+    return -1; //Invalid page access
+  }
+  int frame = (fpn >> PAGING_ADDR_FPN_LOBIT) + off;
+  tlb_cache_write(proc->tlb,proc->pid,pgn,frame);
   return 0;
 }
 
@@ -80,28 +96,44 @@ int tlbread(struct pcb_t * proc, uint32_t source,
   /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
   /* frmnum is return value of tlb_cache_read/write value*/
-	
+  struct vm_rg_struct * rgnode = get_symrg_byid (proc ->mm ,source);
+  if(rgnode->rg_start==-1){
+    printf("Region %d is not allocated yet",source);
+    return -1;
+  }
+  int addr = rgnode->rg_start+offset;
+  int pgn = PAGING_PGN(addr);
+  int off = PAGING_OFFST(addr);
+  int fpn;
+	frmnum = tlb_cache_read(proc->tlb,proc->pid,pgn,data);
 #ifdef IODUMP
   if (frmnum >= 0)
     printf("TLB hit at read region=%d offset=%d\n", 
 	         source, offset);
-  else 
+  else{
     printf("TLB miss at read region=%d offset=%d\n", 
 	         source, offset);
+
+    if(pg_getpage(proc->mm,pgn,&fpn,proc)!=0){
+      return -1; //Invalid page access
+    }
+    int frame = (fpn >> PAGING_ADDR_FPN_LOBIT) + off;
+    tlb_cache_write(proc->tlb,proc->pid,pgn,frame);
+  }
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); //print max TBL
 #endif
   MEMPHY_dump(proc->mram);
 #endif
-
   int val = __read(proc, 0, source, offset, &data);
 
   destination = (uint32_t) data;
 
+  return val;
+  
+
   /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
-
-  return val;
 }
 
 /*tlbwrite - CPU TLB-based write a region memory
@@ -119,26 +151,49 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   /* TODO retrieve TLB CACHED frame num of accessing page(s))*/
   /* by using tlb_cache_read()/tlb_cache_write()
   frmnum is return value of tlb_cache_read/write value*/
+  
+  struct vm_rg_struct * rgnode = get_symrg_byid (proc ->mm ,destination);
+  if(rgnode->rg_start==-1){
+    printf("Region %d is not allocated yet",destination);
+    return -1;
+  }
+  int addr = rgnode->rg_start+offset;
+  int pgn = PAGING_PGN(addr);
+  int off = PAGING_OFFST(addr);
+  int fpn;
+	frmnum = tlb_cache_read(proc->tlb,proc->pid,pgn,data);
 
 #ifdef IODUMP
   if (frmnum >= 0)
     printf("TLB hit at write region=%d offset=%d value=%d\n",
 	          destination, offset, data);
-	else
+	else{
     printf("TLB miss at write region=%d offset=%d value=%d\n",
             destination, offset, data);
+
+    if(pg_getpage(proc->mm,pgn,&fpn,proc)!=0){
+      return -1; //Invalid page access
+    }
+    int frame = (fpn >> PAGING_ADDR_FPN_LOBIT) + off;
+    tlb_cache_write(proc->tlb,proc->pid,pgn,frame);
+  }
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); //print max TBL
 #endif
   MEMPHY_dump(proc->mram);
 #endif
+  if(frmnum>=0){
+    return 0;
+  }
+  else{
+    val = __write(proc, 0, destination, offset, data);
 
-  val = __write(proc, 0, destination, offset, data);
+    /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
+    /* by using tlb_cache_read()/tlb_cache_write()*/
 
-  /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
-
-  return val;
+    return val;
+  }
+  
 }
 
 //#endif
