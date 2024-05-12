@@ -1,3 +1,4 @@
+
 #include "mem.h"
 #include "stdlib.h"
 #include "string.h"
@@ -10,9 +11,9 @@ static struct
 {
 	uint32_t proc; // ID of process currently uses this page
 	int index;	   // Index of the page in the list of pages allocated
-	// to the process.
-	int next; // The next page in the list. -1 if it is the last
-	// page.
+				   // to the process.
+	int next;	   // The next page in the list. -1 if it is the last
+				   // page.
 } _mem_stat[NUM_PAGES];
 
 static pthread_mutex_t mem_lock;
@@ -43,6 +44,7 @@ static addr_t get_second_lv(addr_t addr)
 }
 
 /* Search for page table table from the a segment table */
+/* Search for page table table from the a segment table */
 static struct trans_table_t *get_trans_table(
 	addr_t index, // Segment level index
 	struct page_table_t *page_table)
@@ -53,12 +55,14 @@ static struct trans_table_t *get_trans_table(
 	int i;
 	for (i = 0; i < page_table->size; i++)
 	{
-		// Enter your code here
-		if (page_table->table[i].pfn == index && page_table->table[i].valid == 1)
+		// Check if the index matches
+		if (page_table->table[i].v_index == index)
 		{
-			return &page_table->table[i].table;
+			// Return the corresponding page table
+			return page_table->table[i].next_lv;
 		}
 	}
+	// If no match found, return NULL
 	return NULL;
 }
 
@@ -94,7 +98,6 @@ static int translate(
 		if (trans_table->table[i].v_index == second_lv)
 		{
 			/* DO NOTHING HERE. This mem is obsoleted */
-			*physical_addr = (trans_table->table[i].pfn << OFFSET_LEN) | offset;
 			return 1;
 		}
 	}
@@ -105,60 +108,27 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 {
 	pthread_mutex_lock(&mem_lock);
 	addr_t ret_mem = 0;
-	/* DO NOTHING HERE. This mem is obsoleted */
 
-	uint32_t num_pages = (size % PAGE_SIZE) ? size / PAGE_SIZE : size / PAGE_SIZE + 1; // Number of pages we will use
-	int mem_avail = 0;																   // We could allocate new memory region or not?
-
-	/* First we must check if the amount of free memory in
-	 * virtual address space and physical address space is
-	 * large enough to represent the amount of required
-	 * memory. If so, set 1 to [mem_avail].
-	 * Hint: check [proc] bit in each page of _mem_stat
-	 * to know whether this page has been used by a process.
-	 * For virtual memory space, check bp (break pointer).
-	 * */
-
-	if (mem_avail)
+	for (int i = 0; i < NUM_PAGES; ++i)
 	{
-		/* We could allocate new memory region to the process */
-		ret_mem = proc->bp;
-		proc->bp += num_pages * PAGE_SIZE;
-		/* Update status of physical pages which will be allocated
-		 * to [proc] in _mem_stat. Tasks to do:
-		 *   - Update [proc], [index], and [next] field
-		 *   - Add entries to segment table page tables of [proc]
-		 *     to ensure accesses to allocated memory slot is
-		 *     valid. */
-		int i;
-		for (i = 0; i < NUM_PAGES; i++)
+		if (_mem_stat[i].proc == 0)
 		{
-			if (_mem_stat[i].proc == 0)
-			{
-				_mem_stat[i].proc = proc->pid;
-				_mem_stat[i].index = i;
-				if (i < NUM_PAGES - 1)
-				{
-					_mem_stat[i].next = i + 1;
-				}
-				else
-				{
-					_mem_stat[i].next = -1;
-				}
-				break;
-			}
+			_mem_stat[i].proc = proc->pid;
+			_mem_stat[i].index = i;
+			_mem_stat[i].next = (i == NUM_PAGES - 1) ? -1 : i + 1;
+			ret_mem = i * PAGE_SIZE;
+			break;
 		}
 	}
+
 	pthread_mutex_unlock(&mem_lock);
 	return ret_mem;
 }
-
 int free_mem(addr_t address, struct pcb_t *proc)
 {
 	/* DO NOTHING HERE. This mem is obsoleted */
 	return 0;
 }
-
 int read_mem(addr_t address, struct pcb_t *proc, BYTE *data)
 {
 	addr_t physical_addr;
