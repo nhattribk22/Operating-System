@@ -45,14 +45,18 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, int frame)
     */
    int check_pgnum = pgnum%256;
    int check_addr = 0;
+   BYTE value;
    for(int i = 0;i<3;i++){
-      check_addr= 256*check_addr+mp->storage[pid*MAX_DATA_PER_PROC + check_pgnum*8+1+i];
+      TLBMEMPHY_read(mp,pid*MAX_DATA_PER_PROC + check_pgnum*8+1+i,&value);
+      check_addr= 256*check_addr+(int)value;
    }
    //Check_addr is tag, if pgnum matches tag then return page entry (TLB HIT)
-   if((pgnum/256)==check_addr&&(int)(mp->storage[pid*MAX_DATA_PER_PROC + check_pgnum*8])!=0x0000){
+   TLBMEMPHY_read(mp,pid*MAX_DATA_PER_PROC + check_pgnum*8,&value);
+   if((pgnum/256)==check_addr&&(int)(value)!=0x0000){
       int frame = 0;
       for(int i = 0;i<4;i++){
-         frame = 256*frame+mp->storage[pid*MAX_DATA_PER_PROC + check_pgnum*8+4+i];
+         TLBMEMPHY_read(mp,pid*MAX_DATA_PER_PROC + check_pgnum*8+4+i,&value);
+         frame = 256*frame+(int)value;
       }
       return frame;
    }
