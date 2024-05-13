@@ -6,7 +6,7 @@
 
 #include "mm.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 /*
  *  MEMPHY_mv_csr - move MEMPHY cursor
  *  @mp: memphy struct
@@ -160,7 +160,13 @@ int MEMPHY_dump(struct memphy_struct * mp)
     /*TODO dump memphy contnt mp->storage 
      *     for tracing the memory content
      */
-
+    printf("------RAM CONTENT------\n");
+    for (int addr = 0; addr < mp->maxsz; addr++) {
+        if (mp->storage[addr] != 0) {
+            printf("Address: 0x%08lx, Value: 0x%02x\n", (long int)addr, mp->storage[addr]);
+        }
+    }
+    printf("\n");
     return 0;
 }
 
