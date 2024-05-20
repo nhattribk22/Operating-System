@@ -142,12 +142,22 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
    /*TODO dump memphy contnt mp->storage 
     *     for tracing the memory content
     */
-   int dump = 0;
-   for(int i = 0;i<mp->maxsz;i++){
-      dump*=256;
-      dump+=atoi(mp->storage+i);
+   BYTE data;
+   printf("TLBMEMPHY_dump : \n");
+   for(int i = 0; MAX_DATA_PER_PROC*i<=mp->maxsz;i++){
+      for(int j = 0;j<256;j++){
+         TLBMEMPHY_read(mp,i*MAX_DATA_PER_PROC+8*j,&data);
+         if(data!=(BYTE)0x0000){
+            printf("At pid = %d, offset = %d :  ",i,j);
+            for(int k = 0;k<8;k++){
+               TLBMEMPHY_read(mp,i*MAX_DATA_PER_PROC+8*j+k,&data);
+               printf("%X  ",data);
+            }
+            printf("\n");
+         }
+      }
    }
-   return dump;
+   return 0;
 }
 
 
