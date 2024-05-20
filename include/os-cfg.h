@@ -1,8 +1,8 @@
 #ifndef OSCFG_H
 #define OSCFG_H
 
-#define MLQ_SCHED 5
-#define MAX_PRIO 5
+#define MLQ_SCHED 8
+#define MAX_PRIO 200
 
 #define CPU_TLB
 #define CPUTLB_FIXED_TLBSZ
