@@ -14,18 +14,18 @@
  *@rg_elmt: new region
  *
  */
-int enlist_vm_freerg_list(struct mm_struct *mm, struct vm_rg_struct rg_elmt)
+int enlist_vm_freerg_list(struct mm_struct *mm, struct vm_rg_struct* rg_elmt)
 {
   struct vm_rg_struct *rg_node = mm->mmap->vm_freerg_list;
 
-  if (rg_elmt.rg_start >= rg_elmt.rg_end)
+  if (rg_elmt->rg_start >= rg_elmt->rg_end)
     return -1;
 
   if (rg_node != NULL)
-    rg_elmt.rg_next = rg_node;
+    rg_elmt->rg_next = rg_node;
 
   /* Enlist the new region */
-  mm->mmap->vm_freerg_list = &rg_elmt;
+  mm->mmap->vm_freerg_list = rg_elmt;
 
   return 0;
 }
@@ -78,7 +78,11 @@ struct vm_rg_struct *get_symrg_byid(struct mm_struct *mm, int rgid)
  */
 int __alloc(struct pcb_t* caller, int vmaid, int rgid, int size, int* alloc_addr)
 {
+    if(size<=0){
+      return -1;
+    }
     // Allocate at the toproof
+    
     struct vm_rg_struct rgnode;
 
     if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
@@ -87,10 +91,6 @@ int __alloc(struct pcb_t* caller, int vmaid, int rgid, int size, int* alloc_addr
         caller->mm->symrgtbl[rgid].rg_end = rgnode.rg_end;
 
         *alloc_addr = rgnode.rg_start;
-#ifdef IODUMP
-        printf("\t<Process %d> ALLOC region %d: %lu - %lu\n", caller->pid, rgid, caller->mm->symrgtbl[rgid].rg_start, caller->mm->symrgtbl[rgid].rg_end);
-#endif
-
         return 0;
     }
 
@@ -108,20 +108,21 @@ int __alloc(struct pcb_t* caller, int vmaid, int rgid, int size, int* alloc_addr
         return -1;
 
     // Successful increase limit
-    if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
+    caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
+    // Increase size of the region area
+    caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
+    
+    *alloc_addr = old_sbrk;
+
+    if (old_sbrk + size < cur_vma->sbrk)
     {
-        caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
-        // Increase size of the region area
-        caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
-        *alloc_addr = old_sbrk;
-        cur_vma->sbrk += size;
-        return 0;
+        struct vm_rg_struct* free_rg = malloc(sizeof(struct vm_rg_struct));
+        free_rg->rg_start = old_sbrk + size;
+        free_rg->rg_end = cur_vma->sbrk;
+        free_rg->rg_next = NULL;
+        enlist_vm_freerg_list(caller->mm, free_rg);
     }
-
-#ifdef IODUMP
     printf("\t<Process %d> ALLOC region %d: %lu - %lu\n", caller->pid, rgid, caller->mm->symrgtbl[rgid].rg_start, caller->mm->symrgtbl[rgid].rg_end);
-#endif
-
     return 0;
 }
 
